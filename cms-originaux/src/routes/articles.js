@@ -171,11 +171,24 @@ articles.get('/id/:id', async (c) => {
 // ── GET /articles/:slug — Artículo por slug ──────────────────
 articles.get('/:slug', async (c) => {
   const slug = c.req.param('slug');
+  const site = (c.req.query('site') || '').trim().toLowerCase();
   try {
-    // 1. Buscar por SLUG exacto en PARAFRASEADOS
-    const rowPara = await c.env.DB.prepare(
-      "SELECT *, 'PARAFRASEADO' as SOURCE_TABLE FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? LIMIT 1"
-    ).bind(slug).first();
+    // 1. Buscar por SLUG exacto en PARAFRASEADOS, priorizando el sitio solicitado.
+    //    Un mismo SLUG puede repetirse en varias filas (una por SITIO_DESTINO, que
+    //    admite listas "a,b,c"), así que primero se busca la fila que incluye el
+    //    sitio pedido y solo si no existe se cae a cualquier fila (comportamiento
+    //    histórico, ahora con desempate determinista por fecha más reciente).
+    let rowPara = null;
+    if (site) {
+      rowPara = await c.env.DB.prepare(
+        "SELECT *, 'PARAFRASEADO' as SOURCE_TABLE FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? AND (',' || SITIO_DESTINO || ',') LIKE ? ORDER BY FECHA_PUBLICACION DESC LIMIT 1"
+      ).bind(slug, `%,${site},%`).first();
+    }
+    if (!rowPara) {
+      rowPara = await c.env.DB.prepare(
+        "SELECT *, 'PARAFRASEADO' as SOURCE_TABLE FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? ORDER BY FECHA_PUBLICACION DESC LIMIT 1"
+      ).bind(slug).first();
+    }
     if (rowPara) return c.json({ article: parseArticleRow(rowPara) });
 
     // 2. Buscar en CMS por SLUG

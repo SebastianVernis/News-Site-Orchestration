@@ -1,7 +1,20 @@
-async function resolveArticleBySlug(db, slug) {
-  let article = await db.prepare(
-    "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? LIMIT 1"
-  ).bind(slug).first();
+async function resolveArticleBySlug(db, slug, siteSlug) {
+  const site = (siteSlug || '').trim().toLowerCase();
+
+  // PARAFRASEADOS — un mismo SLUG puede repetirse (una fila por SITIO_DESTINO, que
+  // admite listas "a,b,c"). Se prioriza la fila que incluye el sitio solicitado y,
+  // si no hay, se cae a cualquier fila (desempate por fecha más reciente).
+  let article = null;
+  if (site) {
+    article = await db.prepare(
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? AND (',' || SITIO_DESTINO || ',') LIKE ? ORDER BY FECHA_PUBLICACION DESC LIMIT 1"
+    ).bind(slug, `%,${site},%`).first();
+  }
+  if (!article) {
+    article = await db.prepare(
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? ORDER BY FECHA_PUBLICACION DESC LIMIT 1"
+    ).bind(slug).first();
+  }
 
   let isCMS = false;
 
@@ -51,7 +64,7 @@ export async function handleArticleRequest(context, siteSlug) {
       return await next();
     }
 
-    const { article } = await resolveArticleBySlug(env.DB, requestedSlug);
+    const { article } = await resolveArticleBySlug(env.DB, requestedSlug, siteSlug);
     if (!article) {
       return await next();
     }
