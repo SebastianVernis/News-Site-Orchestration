@@ -257,7 +257,9 @@ export default function Editor() {
     const handler = () => handleSave()
     document.addEventListener('editor-save', handler)
     return () => document.removeEventListener('editor-save', handler)
-  }, [editor, article, title, slug, metaTitle, metaDescription, focusKeyword, tags])
+    // Deps espejo de handleSave (declarado más abajo): incluir imageUrl
+    // para que el listener no capture un handleSave con imagen vieja.
+  }, [editor, article, title, slug, imageUrl, metaTitle, metaDescription, focusKeyword, tags])
 
   useEffect(() => {
     if (articleId !== 'new') fetchArticle()
@@ -448,7 +450,7 @@ export default function Editor() {
     } finally {
       setSaving(false)
     }
-  }, [editor, saving, cms, articleId, title, slug, metaTitle, metaDescription, focusKeyword, tags, selectedSites, publishToFacebook, navigate])
+  }, [editor, saving, cms, articleId, title, slug, imageUrl, metaTitle, metaDescription, focusKeyword, tags, selectedSites, publishToFacebook, navigate])
 
   const handleDelete = useCallback(async () => {
     if (articleId === 'new' || deleting) return
