@@ -1,26 +1,35 @@
+async function getSiteName(db, siteSlug) {
+  try {
+    const row = await db.prepare('SELECT NOMBRE FROM SITIOS WHERE SLUG = ? LIMIT 1').bind(siteSlug).first();
+    if (row?.NOMBRE) return row.NOMBRE;
+  } catch (_) {}
+  // Fallback: capitalize slug
+  return siteSlug.charAt(0).toUpperCase() + siteSlug.slice(1).replace(/([A-Z])/g, ' $1');
+}
+
 async function resolveArticleBySlug(db, slug) {
   let article = await db.prepare(
-    "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? LIMIT 1"
+    "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? LIMIT 1"
   ).bind(slug).first();
 
   let isCMS = false;
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE SLUG = ? LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
   }
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? LIMIT 1"
     ).bind(slug).first();
   }
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
   }
@@ -31,13 +40,12 @@ async function resolveArticleBySlug(db, slug) {
 export async function handleArticleRequest(context, siteSlug) {
   const { request, env, next } = context;
   const url = new URL(request.url);
-  
-  // Skip non-HTML requests (CSS, JS, images, etc.)
+
   const pathname = url.pathname;
   if (/\.(css|js|json|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot)$/i.test(pathname)) {
     return await next();
   }
-  
+
   const requestedSlug = url.searchParams.get('slug');
   const canonicalUrl = url.toString();
 
@@ -47,11 +55,14 @@ export async function handleArticleRequest(context, siteSlug) {
 
   try {
     if (!env.DB) {
-      console.warn(`[OG MIDDLEWARE] ${siteSlug}: env.DB not available — OG tags will be empty. Check D1 binding in Pages dashboard.`);
+      console.warn('[OG MIDDLEWARE] ' + siteSlug + ': env.DB not available');
       return await next();
     }
 
-    const { article } = await resolveArticleBySlug(env.DB, requestedSlug);
+    const [{ article }, siteName] = await Promise.all([
+      resolveArticleBySlug(env.DB, requestedSlug),
+      getSiteName(env.DB, siteSlug)
+    ]);
     if (!article) {
       return await next();
     }
@@ -63,13 +74,10 @@ export async function handleArticleRequest(context, siteSlug) {
     }
 
     const response = await next();
-    const title = article.title;
 
-    // Sanitizar la descripción para OG/Twitter cards:
-    // - Quitar tags HTML
-    // - Decodificar entidades (acentos, &amp;, etc.)
-    // - Colapsar whitespace
-    // - Cortar a 200 chars sin romper palabras
+    const seoTitle = article.meta_title || article.title;
+    const seoDescription = article.meta_desc || article.desc;
+
     const stripHtml = (html) => {
       if (!html) return '';
       return String(html)
@@ -78,110 +86,110 @@ export async function handleArticleRequest(context, siteSlug) {
         .replace(/<[^>]+>/g, ' ')
         .replace(/&nbsp;/gi, ' ')
         .replace(/&amp;/gi, '&')
-        .replace(/&lt;/gi, '<')
-        .replace(/&gt;/gi, '>')
-        .replace(/&quot;/gi, '"')
-        .replace(/&#39;/gi, "'")
-        .replace(/&#[0-9]+;/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
     };
-    const truncate = (text, max) => {
-      if (!text) return '';
-      if (text.length <= max) return text;
-      const slice = text.substring(0, max);
-      const lastSpace = slice.lastIndexOf(' ');
-      return (lastSpace > 80 ? slice.substring(0, lastSpace) : slice) + '…';
-    };
-    const description = truncate(stripHtml(article.desc), 200);
+
+    const description = seoDescription || stripHtml(article.desc || '').substring(0, 160);
+
     const normalizeImageUrl = (value) => {
-      if (!value || typeof value !== 'string') return `${url.origin}/logo.png`;
-
-      let normalized = value.trim();
-
-      if (!normalized || normalized.includes('undefined')) {
-        return `${url.origin}/logo.png`;
-      }
-
-      if (normalized.startsWith('//')) {
-        normalized = `https:${normalized}`;
-      } else if (normalized.startsWith('/')) {
-        normalized = `${url.origin}${normalized}`;
-      } else if (normalized.includes('pub-42bf42f47f554f9791e810e7d0f209d4.r2.dev') && !/^https?:\/\//i.test(normalized)) {
-        normalized = `https://${normalized.replace(/^\/+/, '')}`;
-      }
-
-      if (/^http:\/\//i.test(normalized)) {
-        normalized = normalized.replace(/^http:\/\//i, 'https://');
-      }
-
-      if (!/^https:\/\//i.test(normalized)) {
-        return `${url.origin}/logo.png`;
-      }
-
-      return normalized;
+      if (!value || typeof value !== 'string') return url.origin + '/logo.png';
+      let n = value.trim();
+      if (!n || n.includes('undefined')) return url.origin + '/logo.png';
+      if (n.startsWith('//')) n = 'https:' + n;
+      else if (n.startsWith('/')) n = url.origin + n;
+      if (/^http:\/\//i.test(n)) n = n.replace(/^http:\/\//i, 'https://');
+      if (!/^https:\/\//i.test(n)) return url.origin + '/logo.png';
+      return n;
     };
 
     const image = normalizeImageUrl(article.image || '/logo.png');
 
-    const tableName = `ARTICULOS_SITIO_${siteSlug.toUpperCase()}`;
-
+    // Update visit tracking
+    const tableName = 'ARTICULOS_SITIO_' + siteSlug.toUpperCase();
     try {
-      await env.DB.prepare(`
-        UPDATE ${tableName}
-        SET WEB_URL = ?, WEB_FECHA = CASE WHEN WEB_FECHA IS NULL THEN datetime('now') ELSE WEB_FECHA END
-        WHERE ID_PARAFRASEADO = ?
-      `).bind(url.href, article.para_id).run();
+      await env.DB.prepare(
+        'UPDATE ' + tableName + ' SET WEB_URL = ?, WEB_FECHA = CASE WHEN WEB_FECHA IS NULL THEN datetime(\'now\') ELSE WEB_FECHA END WHERE ID_PARAFRASEADO = ?'
+      ).bind(url.href, article.para_id).run();
     } catch (_) {}
 
     const escapeHtml = (text) => {
       if (!text) return '';
-      return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     };
 
-    const escapedTitle = escapeHtml(title);
-    const escapedDescription = escapeHtml(description);
-    const escapedImage = escapeHtml(image);
-    const escapedCanonicalUrl = escapeHtml(canonicalUrl);
+    const esc = (s) => escapeHtml(s || '');
+    const now = new Date().toISOString();
 
-     return new HTMLRewriter()
-       .on('title', { element(el) { el.setInnerContent(title); } })
-       .on('meta#page-desc', { element(el) { el.setAttribute('content', description); } })
-       .on('meta#og-title', { element(el) { el.setAttribute('content', title); } })
-       .on('meta#og-desc', { element(el) { el.setAttribute('content', description); } })
-       .on('meta#og-image', { element(el) { el.setAttribute('content', image); } })
-       .on('meta#og-url', { element(el) { el.setAttribute('content', canonicalUrl); } })
-       .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'article'); } })
-       .on('head', {
-         element(el) {
-           el.prepend(`
-             <meta property="fb:app_id" content="2726604081032124" />
-             <meta property="og:type" content="article" />
-             <meta property="og:title" content="${escapedTitle}" />
-             <meta property="og:description" content="${escapedDescription}" />
-             <meta property="og:image" content="${escapedImage}" />
-             <meta property="og:image:secure_url" content="${escapedImage}" />
-             <meta property="og:image:alt" content="${escapedTitle}" />
-             <meta property="og:url" content="${escapedCanonicalUrl}" />
-             <meta property="og:site_name" content="NexoPress" />
-             <meta property="og:locale" content="es_MX" />
-             <meta property="og:updated_time" content="${new Date().toISOString()}" />
-             <meta name="twitter:card" content="summary_large_image" />
-             <meta name="twitter:title" content="${escapedTitle}" />
-             <meta name="twitter:description" content="${escapedDescription}" />
-             <meta name="twitter:image" content="${escapedImage}" />
-             <meta name="twitter:image:alt" content="${escapedTitle}" />
-             <meta name="description" content="${escapedDescription}" />
-             <meta name="robots" content="index, follow" />
-           `, { html: true });
-         }
-       })
-       .transform(response);
+    // Build SEO tags
+    let tagsHtml = '\n';
+    tagsHtml += '    <meta property="fb:app_id" content="2355151528632792" />\n';
+    tagsHtml += '    <meta property="og:type" content="article" />\n';
+    tagsHtml += '    <meta property="og:title" content="' + esc(seoTitle) + '" />\n';
+    tagsHtml += '    <meta property="og:description" content="' + esc(description) + '" />\n';
+    tagsHtml += '    <meta property="og:image" content="' + esc(image) + '" />\n';
+    tagsHtml += '    <meta property="og:image:secure_url" content="' + esc(image) + '" />\n';
+    tagsHtml += '    <meta property="og:image:alt" content="' + esc(seoTitle) + '" />\n';
+    tagsHtml += '    <meta property="og:url" content="' + esc(canonicalUrl) + '" />\n';
+    tagsHtml += '    <meta property="og:site_name" content="' + esc(siteName) + '" />\n';
+    tagsHtml += '    <meta property="og:locale" content="es_MX" />\n';
+    tagsHtml += '    <meta property="og:updated_time" content="' + now + '" />\n';
+    tagsHtml += '    <meta name="twitter:card" content="summary_large_image" />\n';
+    tagsHtml += '    <meta name="twitter:title" content="' + esc(seoTitle) + '" />\n';
+    tagsHtml += '    <meta name="twitter:description" content="' + esc(description) + '" />\n';
+    tagsHtml += '    <meta name="twitter:image" content="' + esc(image) + '" />\n';
+    tagsHtml += '    <meta name="twitter:image:alt" content="' + esc(seoTitle) + '" />\n';
+    tagsHtml += '    <meta name="description" content="' + esc(description) + '" />\n';
+    tagsHtml += '    <meta name="robots" content="index, follow" />\n';
+
+    // Keywords
+    if (article.focus_keyword || article.tags) {
+      let kwParts = [];
+      if (article.focus_keyword) kwParts.push(article.focus_keyword);
+      if (article.tags) {
+        try { const p = JSON.parse(article.tags); if (Array.isArray(p)) kwParts.push(...p); } catch (_) {}
+      }
+      if (kwParts.length) {
+        tagsHtml += '    <meta name="keywords" content="' + esc(kwParts.join(', ')) + '" />\n';
+      }
+    }
+
+    // JSON-LD NewsArticle
+    const jsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'NewsArticle',
+      'headline': seoTitle,
+      'description': description,
+      'image': [image],
+      'datePublished': article.fecha_publicacion || now,
+      'dateModified': now,
+      'author': [{ '@type': 'Organization', 'name': siteName }],
+      'publisher': { '@type': 'Organization', 'name': siteName, 'logo': { '@type': 'ImageObject', 'url': image } },
+      'mainEntityOfPage': { '@type': 'WebPage', '@id': canonicalUrl },
+      'inLanguage': 'es_MX'
+    };
+    tagsHtml += '    <script type="application/ld+json">' + JSON.stringify(jsonLd) + '</script>\n';
+
+    // Read original body and inject
+    const originalBody = await response.text();
+
+    // Replace title
+    let body = originalBody.replace(
+      /<title[^>]*>[^<]*<\/title>/,
+      '<title>' + esc(seoTitle) + '</title>'
+    );
+
+    // Inject SEO tags before </head>
+    const headCloseIdx = body.indexOf('</head>');
+    if (headCloseIdx !== -1) {
+      body = body.substring(0, headCloseIdx) + tagsHtml + '</head>' + body.substring(headCloseIdx + 7);
+    }
+
+    return new Response(body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    });
   } catch (e) {
     console.error('SEO Middleware Error:', e.message);
     return await next();

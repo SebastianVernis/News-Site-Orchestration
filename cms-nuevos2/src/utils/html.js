@@ -72,7 +72,7 @@ export const injectMetaTags = async (request, env, response) => {
       .on('head', {
         element(el) {
           el.prepend(
-            `<meta property="fb:app_id" content="2726604081032124" />` +
+            `<meta property="fb:app_id" content="2355151528632792" />` +
             `<meta property="og:title" content="${esc(article.t)}" />` +
             `<meta property="og:description" content="${esc(article.d)}" />` +
             `<meta property="og:image" content="${esc(ogImg)}" />` +

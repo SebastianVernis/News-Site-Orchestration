@@ -160,7 +160,7 @@ export async function handleArticleRequest(context, siteSlug) {
        .on('head', {
          element(el) {
            el.prepend(`
-             <meta property="fb:app_id" content="2726604081032124" />
+             <meta property="fb:app_id" content="2355151528632792" />
              <meta property="og:type" content="article" />
              <meta property="og:title" content="${escapedTitle}" />
              <meta property="og:description" content="${escapedDescription}" />

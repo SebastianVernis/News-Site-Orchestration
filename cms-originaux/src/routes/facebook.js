@@ -492,7 +492,7 @@ facebook.get('/oauth/start', async (c) => {
     return c.json({ error: 'Missing siteSlug' }, 400);
   }
 
-  const FB_APP_ID = c.env.FB_APP_ID || '2726604081032124';
+  const FB_APP_ID = c.env.FB_APP_ID || '2355151528632792';
   // Scopes necesarios para que el page token pueda publicar en nombre de la
   // página. Sin pages_manage_posts, FB rechaza con error #200 al postear.
   const scope = 'pages_show_list,pages_read_engagement,pages_manage_posts,publish_to_groups';
@@ -526,7 +526,7 @@ facebook.get('/oauth/callback', async (c) => {
     return c.html('<html><body><h1>No code received</h1></body></html>');
   }
   
-  const FB_APP_ID = c.env.FB_APP_ID || '2726604081032124';
+  const FB_APP_ID = c.env.FB_APP_ID || '2355151528632792';
   const FB_APP_SECRET = c.env.FB_APP_SECRET;
   
   try {

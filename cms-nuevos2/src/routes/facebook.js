@@ -497,7 +497,7 @@ facebook.get('/oauth/callback', async (c) => {
     return c.html('<html><body><h1>No code received</h1></body></html>');
   }
   
-  const FB_APP_ID = c.env.FB_APP_ID || '2726604081032124';
+  const FB_APP_ID = c.env.FB_APP_ID || '2355151528632792';
   const FB_APP_SECRET = c.env.FB_APP_SECRET;
   
   try {
