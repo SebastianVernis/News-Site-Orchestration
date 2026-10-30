@@ -514,6 +514,30 @@ articles.delete('/:id', async (c) => {
       console.warn('METRICAS_CONTENIDO cleanup skipped:', e.message);
     }
 
+    // 1.5 Eliminar las filas de control por sitio (FK a PARAFRASEADOS).
+    // Sin esto el DELETE del maestro falla con FOREIGN KEY constraint y la nota
+    // desaparece del feed pero deja filas huérfanas y reintentos de Facebook.
+    try {
+      const destino = await c.env.DB.prepare(
+        'SELECT SITIO_DESTINO FROM ARTICULOS_PARAFRASEADOS WHERE ID = ?'
+      ).bind(id).first();
+      const slugs = String(destino?.SITIO_DESTINO || '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => /^[a-z0-9_]+$/.test(s));
+      for (const slug of slugs) {
+        try {
+          await c.env.DB.prepare(
+            `DELETE FROM ARTICULOS_SITIO_${slug.toUpperCase()} WHERE ID_PARAFRASEADO = ?`
+          ).bind(id).run();
+        } catch (e) {
+          console.warn(`cleanup ${slug} skipped:`, e.message);
+        }
+      }
+    } catch (e) {
+      console.warn('site rows cleanup skipped:', e.message);
+    }
+
     // 2. Eliminar de PARAFRASEADOS
     await c.env.DB.prepare(
       'DELETE FROM ARTICULOS_PARAFRASEADOS WHERE ID = ?'
