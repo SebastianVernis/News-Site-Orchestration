@@ -36,6 +36,15 @@ export const uploadToR2 = async (url, env) => {
 
 const API_BASE = 'https://cms-nuevos3.sebastianvernis.workers.dev';
 
+const plainText = (s) => {
+  let t = String(s || '');
+  t = t.replace(/<[^>]*>/g, ' ');
+  t = t.replace(/&nbsp;/gi, ' ').replace(/&quot;/gi, '"')
+       .replace(/&#39;|&apos;/gi, "'")
+       .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&amp;/gi, '&');
+  return t.replace(/\s+/g, ' ').trim();
+};
+
 const escapeHtml = (s) => {
   if (!s) return '';
   return String(s)
@@ -183,8 +192,8 @@ export const injectMetaTags = async (request, env, response) => {
         else if (article.i.startsWith('http') && !article.i.includes('/logo.png')) ogImg = article.i;
       }
 
-      const safeTitle = escapeHtml(article.t || '');
-      const safeDesc = escapeHtml((article.d || '').substring(0, 200));
+      const safeTitle = escapeHtml(plainText(article.t));
+      const safeDesc = escapeHtml(plainText(article.d).substring(0, 200));
       const safeImg = escapeHtml(ogImg);
       const bodyHtml = safeArticleBody(article.c);
 

@@ -38,6 +38,15 @@ export const uploadToR2 = async (url, env) => {
 // injectMetaTags — Inyecta OG meta tags en páginas de artículo
 // usando HTMLRewriter de Cloudflare Workers
 // ============================================================
+const plainText = (s) => {
+  let t = String(s || '');
+  t = t.replace(/<[^>]*>/g, ' ');
+  t = t.replace(/&nbsp;/gi, ' ').replace(/&quot;/gi, '"')
+       .replace(/&#39;|&apos;/gi, "'")
+       .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&amp;/gi, '&');
+  return t.replace(/\s+/g, ' ').trim();
+};
+
 export const injectMetaTags = async (request, env, response) => {
   const url = new URL(request.url);
   const slug = url.searchParams.get('slug');
@@ -73,11 +82,11 @@ export const injectMetaTags = async (request, env, response) => {
         element(el) {
           el.prepend(
             `<meta property="fb:app_id" content="2355151528632792" />` +
-            `<meta property="og:title" content="${esc(article.t)}" />` +
-            `<meta property="og:description" content="${esc(article.d)}" />` +
+            `<meta property="og:title" content="${esc(plainText(article.t))}" />` +
+            `<meta property="og:description" content="${esc(plainText(article.d))}" />` +
             `<meta property="og:image" content="${esc(ogImg)}" />` +
             `<meta property="og:image:secure_url" content="${esc(ogImg)}" />` +
-            `<meta property="og:image:alt" content="${esc(article.t)}" />` +
+            `<meta property="og:image:alt" content="${esc(plainText(article.t))}" />` +
             `<meta property="og:url" content="${esc(url.href)}" />` +
             `<meta property="og:type" content="article" />` +
             `<meta property="og:locale" content="es_MX" />` +
