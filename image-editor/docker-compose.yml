@@ -1,0 +1,24 @@
+services:
+  image-editor:
+    build: .
+    image: news-image-editor:latest
+    container_name: image-editor
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=America/Mexico_City
+      - DATA_DIR=/data
+      - IA_MODEL=${IA_MODEL:-google/gemini-2.5-flash-image}
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:8090:8090"
+    networks:
+      - news-pipeline
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+networks:
+  news-pipeline:
+    external: true
