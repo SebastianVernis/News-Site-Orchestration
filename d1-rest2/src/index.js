@@ -107,6 +107,40 @@ const SITE_TO_DB = {
 
 const AVAILABLE_DBS = ["DB", "nuevo2", "nuevo3", "nuevos", "nuevo4"];
 
+// ── Normalización de nombres de sitio ────────────────────────────────────────
+// n8n manda el nombre visible del medio ("Central México") y las tablas se
+// llaman sin acentos ni espacios (ARTICULOS_SITIO_CENTRALMEXICO). Sin esto el
+// batch-insert busca "centralméxico" en SITE_TO_DB y falla con 400.
+function normalizeSiteKey(name) {
+    return String(name || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "");
+}
+
+// Nombres visibles que no coinciden literalmente con el slug de la tabla.
+const SITE_ALIASES = {
+    BREAKINGCENTERNEWSMEXICO: "breakingcentermexico",
+    TMZNEWSMEXICO: "tmznews",
+};
+
+const SITE_LOOKUP = (() => {
+    const map = {};
+    for (const [slug, binding] of Object.entries(SITE_TO_DB)) {
+        map[normalizeSiteKey(slug)] = { slug, binding };
+    }
+    for (const [alias, slug] of Object.entries(SITE_ALIASES)) {
+        if (SITE_TO_DB[slug]) map[normalizeSiteKey(alias)] = { slug, binding: SITE_TO_DB[slug] };
+    }
+    return map;
+})();
+
+// Devuelve { slug, binding } para un nombre de sitio o para el sufijo de tabla.
+function resolveSite(rawName) {
+    return SITE_LOOKUP[normalizeSiteKey(rawName)] || null;
+}
+
 // ── Normalizador de fechas ────────────────────────────────────────────────────
 // Convierte fechas de cualquier formato al estándar SQLite: YYYY-MM-DD HH:MM:SS
 // Maneja: ISO 8601, Unix timestamp (seg y ms), formatos variados.
@@ -367,17 +401,36 @@ export default {
                     );
                 }
 
-                // Extraer sitio(s) del SQL y hacer map → DB
-                const siteMatches = [];
+                // Extraer sitio(s) del SQL y hacer map → DB.
+                // El nombre puede venir con acentos/espacios (CENTRALMÉXICO): se
+                // normaliza a la forma real de la tabla y se reescribe el SQL.
+                const TABLE_RE = /ARTICULOS_SITIO_[A-Za-z0-9_\u00C0-\u024F]+/g;
+                const tableRewrites = new Map(); // token original → token normalizado
+                const siteSlugs = [];
+                const unknownSites = new Set();
+
                 for (const item of batch) {
-                    const match = item.sql.match(/ARTICULOS_SITIO_([A-Z0-9_]+)/i);
-                    if (match) {
-                        const siteSlug = match[1].toLowerCase();
-                        siteMatches.push(siteSlug);
+                    const found = String(item.sql || "").match(TABLE_RE) || [];
+                    for (const token of found) {
+                        const raw = token.slice("ARTICULOS_SITIO_".length);
+                        const site = resolveSite(raw);
+                        if (!site) unknownSites.add(raw);
+                        const target = site ? site.slug : normalizeSiteKey(raw);
+                        tableRewrites.set(token, `ARTICULOS_SITIO_${target.toUpperCase()}`);
+                        if (site) siteSlugs.push(site.slug);
                     }
                 }
 
-                if (siteMatches.length === 0) {
+                if (unknownSites.size > 0) {
+                    return new Response(
+                        JSON.stringify({
+                            error: `Sitios no encontrados en mapa: ${[...unknownSites].join(", ")}`,
+                        }),
+                        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+                    );
+                }
+
+                if (siteSlugs.length === 0) {
                     return new Response(
                         JSON.stringify({ error: "No se detectó ninguna tabla ARTICULOS_SITIO_* en el SQL" }),
                         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -385,7 +438,7 @@ export default {
                 }
 
                 // Obtener las DBs únicas que corresponden
-                const uniqueSites = [...new Set(siteMatches)];
+                const uniqueSites = [...new Set(siteSlugs)];
                 const targetDBs = uniqueSites
                     .map((s) => SITE_TO_DB[s])
                     .filter(Boolean);
@@ -404,16 +457,22 @@ export default {
                 const results = await Promise.allSettled(
                     batch.map(async (item) => {
                         const { sql, params = [] } = item;
+                        // Reescribir la tabla a su nombre canónico (sin acentos)
+                        let stmtSQL = sql;
+                        for (const [from, to] of tableRewrites) {
+                            if (stmtSQL.includes(from)) stmtSQL = stmtSQL.split(from).join(to);
+                        }
                         // Detectar sitio del statement actual
-                        const stmtMatch = sql.match(/ARTICULOS_SITIO_([A-Z0-9_]+)/i);
-                        const siteSlug = stmtMatch ? stmtMatch[1].toLowerCase() : null;
-                        const dbName = siteSlug ? (SITE_TO_DB[siteSlug] || uniqueDBs[0]) : uniqueDBs[0];
+                        const stmtMatch = stmtSQL.match(/ARTICULOS_SITIO_([A-Z0-9_]+)/);
+                        const site = stmtMatch ? resolveSite(stmtMatch[1]) : null;
+                        if (!site) throw new Error(`Sitio no reconocido en SQL: ${stmtMatch ? stmtMatch[1] : "(ninguno)"}`);
+                        const dbName = site.binding;
                         const db = env[dbName];
 
                         if (!db) throw new Error(`Binding ${dbName} no encontrado`);
 
                         // Normalizar fechas en el SQL antes de ejecutar
-                        const normalizedSQL = normalizeSQLDates(sql);
+                        const normalizedSQL = normalizeSQLDates(stmtSQL);
 
                         // Auto-generar ID si no viene explícita en el INSERT
                         const { sql: idSQL, params: idParams } = ensureIdInBatchSQL(normalizedSQL, params);
