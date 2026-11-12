@@ -88,7 +88,7 @@
         } catch(e) { showError(); }
 
         function renderArticle(a) {
-            document.title = (a.title || 'Artículo') + ' - Radio Cinco Noticias';
+            document.title = (a.title || 'Artículo') + ' - Nodo Informativo';
             const desc = document.getElementById('page-desc');
             if (desc) desc.content = a.excerpt || '';
             const cat = a.category || '';

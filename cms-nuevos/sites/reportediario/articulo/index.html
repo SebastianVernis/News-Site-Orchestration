@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title">Cargando... - Radio Cinco Noticias</title>
+    <title id="page-title">Cargando... - Reporte Diario</title>
     <meta name="description" id="page-desc" content="">
     <!-- OG Tags -->
     <meta property="og:title" id="og-title" content="">
@@ -88,7 +88,7 @@
         } catch(e) { showError(); }
 
         function renderArticle(a) {
-            document.title = (a.title || 'Artículo') + ' - Radio Cinco Noticias';
+            document.title = (a.title || 'Artículo') + ' - Reporte Diario';
             const desc = document.getElementById('page-desc');
             if (desc) desc.content = a.excerpt || '';
             const cat = a.category || '';
