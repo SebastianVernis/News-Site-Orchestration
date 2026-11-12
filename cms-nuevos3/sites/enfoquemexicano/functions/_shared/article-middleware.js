@@ -9,27 +9,27 @@ async function getSiteName(db, siteSlug) {
 
 async function resolveArticleBySlug(db, slug) {
   let article = await db.prepare(
-    "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? LIMIT 1"
+    "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
   ).bind(slug).first();
 
   let isCMS = false;
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
   }
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
   }
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
   }

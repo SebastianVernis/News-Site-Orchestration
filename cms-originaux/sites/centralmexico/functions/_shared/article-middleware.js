@@ -7,12 +7,12 @@ async function resolveArticleBySlug(db, slug, siteSlug) {
   let article = null;
   if (site) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? AND (',' || SITIO_DESTINO || ',') LIKE ? ORDER BY FECHA_PUBLICACION DESC LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' AND (',' || SITIO_DESTINO || ',') LIKE ? ORDER BY FECHA_PUBLICACION DESC LIMIT 1"
     ).bind(slug, `%,${site},%`).first();
   }
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? ORDER BY FECHA_PUBLICACION DESC LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' ORDER BY FECHA_PUBLICACION DESC LIMIT 1"
     ).bind(slug).first();
   }
 
@@ -20,20 +20,20 @@ async function resolveArticleBySlug(db, slug, siteSlug) {
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
   }
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
   }
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
   }

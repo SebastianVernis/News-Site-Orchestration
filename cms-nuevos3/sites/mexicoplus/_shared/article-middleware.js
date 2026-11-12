@@ -1,26 +1,26 @@
 async function resolveArticleBySlug(db, slug) {
   let article = await db.prepare(
-    "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? LIMIT 1"
+    "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
   ).bind(slug).first();
 
   let isCMS = false;
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
   }
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
   }
 
   if (!article) {
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image, META_TITLE as meta_title, META_DESCRIPTION as meta_desc, FOCUS_KEYWORD as focus_keyword, TAGS as tags, FECHA_PUBLICACION as fecha_publicacion FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
   }
@@ -50,7 +50,25 @@ export async function handleArticleRequest(context, siteSlug) {
       return await next();
     }
 
-    const { article } = await resolveArticleBySlug(env.DB, requestedSlug);
+        const _resuelto = await resolveArticleBySlug(env.DB, requestedSlug);
+    const article = _resuelto.article;
+    if (article) {
+      // Un borrador no se sirve: sin esta verificación el middleware inyectaba
+      // título, descripción y OG de artículos con ESTADO distinto de PUBLICADO.
+      let _estado = null;
+      try {
+        const _fila = await env.DB.prepare(
+          "SELECT ESTADO as estado FROM ARTICULOS_PARAFRASEADOS WHERE ID = ? LIMIT 1"
+        ).bind(article.para_id).first()
+          || await env.DB.prepare(
+            "SELECT ESTADO as estado FROM ARTICULOS_CMS WHERE ID = ? LIMIT 1"
+          ).bind(article.para_id).first();
+        _estado = _fila ? String(_fila.estado || "").toUpperCase() : null;
+      } catch (_) {
+        _estado = null;
+      }
+      if (_estado !== "PUBLICADO") return await next();
+    }
     if (!article) {
       return await next();
     }

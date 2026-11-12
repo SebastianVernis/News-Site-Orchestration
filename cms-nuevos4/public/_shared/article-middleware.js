@@ -4,7 +4,7 @@ async function resolveArticleBySlug(db, slug) {
   console.log(`[RESOLVE] Starting query for slug: ${slug}`);
   
   let article = await db.prepare(
-    "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? LIMIT 1"
+    "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
   ).bind(slug).first();
   
   console.log(`[RESOLVE] Query result 1:`, article ? 'Found' : 'Not found');
@@ -14,7 +14,7 @@ async function resolveArticleBySlug(db, slug) {
   if (!article) {
     console.log(`[RESOLVE] Trying ARTICULOS_CMS table`);
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
     console.log(`[RESOLVE] Query result 2 (CMS):`, article ? 'Found' : 'Not found');
@@ -23,7 +23,7 @@ async function resolveArticleBySlug(db, slug) {
   if (!article) {
     console.log(`[RESOLVE] Trying LEGACY_SLUG in PARAFRASEADOS`);
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO_PARAFRASEADO as title, DESCRIPCION_PARAFRASEADA as desc, URL_IMAGEN as image FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     console.log(`[RESOLVE] Query result 3:`, article ? 'Found' : 'Not found');
   }
@@ -31,7 +31,7 @@ async function resolveArticleBySlug(db, slug) {
   if (!article) {
     console.log(`[RESOLVE] Trying LEGACY_SLUG in CMS`);
     article = await db.prepare(
-      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? LIMIT 1"
+      "SELECT ID as para_id, SLUG as canonical_slug, LEGACY_SLUG as legacy_slug, TITULO as title, DESCRIPCION as desc, URL_IMAGEN as image FROM ARTICULOS_CMS WHERE LEGACY_SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     isCMS = Boolean(article);
     console.log(`[RESOLVE] Query result 4:`, article ? 'Found' : 'Not found');
