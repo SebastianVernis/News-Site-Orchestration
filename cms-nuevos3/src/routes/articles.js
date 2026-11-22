@@ -181,7 +181,7 @@ articles.get('/:slug', async (c) => {
   try {
     // 1. Buscar por SLUG exacto en PARAFRASEADOS
     const rowPara = await c.env.DB.prepare(
-      "SELECT *, 'PARAFRASEADO' as SOURCE_TABLE FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? LIMIT 1"
+      "SELECT *, 'PARAFRASEADO' as SOURCE_TABLE FROM ARTICULOS_PARAFRASEADOS WHERE SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
     ).bind(slug).first();
     if (rowPara) return c.json({ article: parseArticleRow(rowPara) });
 
@@ -198,7 +198,7 @@ articles.get('/:slug', async (c) => {
 
     // 3. Fallback: artículos con SLUG NULL — comparar slug generado desde título
     const allPara = await c.env.DB.prepare(
-      "SELECT *, 'PARAFRASEADO' as SOURCE_TABLE FROM ARTICULOS_PARAFRASEADOS WHERE SLUG IS NULL ORDER BY FECHA_PUBLICACION DESC LIMIT 100"
+      "SELECT *, 'PARAFRASEADO' as SOURCE_TABLE FROM ARTICULOS_PARAFRASEADOS WHERE SLUG IS NULL AND ESTADO = 'PUBLICADO' ORDER BY FECHA_PUBLICACION DESC LIMIT 100"
     ).all();
     const matchPara = (allPara.results || []).find((r) => {
        const generated = articleSlugify(r.TITULO_PARAFRASEADO || r.TITULO || '');
@@ -209,7 +209,7 @@ articles.get('/:slug', async (c) => {
      let legacyPara = null;
       try {
         legacyPara = await c.env.DB.prepare(
-          "SELECT *, 'PARAFRASEADO' as SOURCE_TABLE FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? LIMIT 1"
+          "SELECT *, 'PARAFRASEADO' as SOURCE_TABLE FROM ARTICULOS_PARAFRASEADOS WHERE LEGACY_SLUG = ? AND ESTADO = 'PUBLICADO' LIMIT 1"
         ).bind(slug).first();
       } catch (_) {
         // Columna LEGACY_SLUG puede no existir en producción

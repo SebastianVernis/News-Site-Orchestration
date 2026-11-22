@@ -185,6 +185,16 @@ export async function handleArticleRequest(context, siteSlug) {
       '<title>' + esc(seoTitle) + '</title>'
     );
 
+    // Deduplicar metadatos sociales: si el shell estatico o el worker del CMS
+    // ya pusieron og:*, nos quedariamos con 2+ og:url y Facebook rechaza el
+    // scrape (error 100/1611070 "More Than One OG URL Specified"), dejando el
+    // post como enlace sin imagen.
+    body = body
+      .replace(/<meta\s+property=["'](?:og|fb|article):[^"']*["'][^>]*>\s*/gi, '')
+      .replace(/<meta\s+name=["']twitter:[^"']*["'][^>]*>\s*/gi, '')
+      .replace(/<meta\s+name=["']description["'][^>]*>\s*/gi, '')
+      .replace(/<script\s+type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>\s*/gi, '');
+
     // Inject SEO tags before </head>
     const headCloseIdx = body.indexOf('</head>');
     if (headCloseIdx !== -1) {

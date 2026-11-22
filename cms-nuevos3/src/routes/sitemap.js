@@ -82,7 +82,7 @@ app.get('/:site', async (c) => {
     const keywords = esc(a.FOCUS_KEYWORD || a.CATEGORIA || '')
 
     xml += `  <url>
-    <loc>${esc(siteOrigin)}/articulo/${a.SLUG}</loc>
+    <loc>${esc(siteOrigin)}/articulo/?slug=${a.SLUG}</loc>
     <lastmod>${isoDate.slice(0, 10)}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>\n`

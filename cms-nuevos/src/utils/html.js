@@ -76,8 +76,21 @@ export const injectMetaTags = async (request, env, response) => {
       .on('title', {
         element(el) { el.setInnerContent(article.t || ''); }
       })
-      .on('meta#og-image', { element(el) { el.setAttribute('content', ogImg); } })
-      .on('meta#og-url',   { element(el) { el.setAttribute('content', url.href); } })
+      .on('meta#page-desc', { element(el) { el.setAttribute('content', esc(plainText(article.d))); } })
+      // Borra TODO og:/twitter: que traiga el origen (shell vacío o function de Pages).
+      // Con 2 og:url Meta responde 100/1611070 y publica sin imagen; el bloque de
+      // abajo se prependea al final y HTMLRewriter no vuelve a procesarlo.
+      .on('meta[property="og:title"]',       { element(el) { el.remove(); } })
+      .on('meta[property="og:description"]', { element(el) { el.remove(); } })
+      .on('meta[property="og:image"]',       { element(el) { el.remove(); } })
+      .on('meta[property="og:image:secure_url"]', { element(el) { el.remove(); } })
+      .on('meta[property="og:image:alt"]',   { element(el) { el.remove(); } })
+      .on('meta[property="og:url"]',         { element(el) { el.remove(); } })
+      .on('meta[property="og:type"]',        { element(el) { el.remove(); } })
+      .on('meta[property="og:locale"]',      { element(el) { el.remove(); } })
+      .on('meta[property="fb:app_id"]',      { element(el) { el.remove(); } })
+      .on('meta[name="twitter:card"]',       { element(el) { el.remove(); } })
+      .on('meta[name="twitter:image"]',      { element(el) { el.remove(); } })
       .on('head', {
         element(el) {
           el.prepend(

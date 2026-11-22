@@ -16,13 +16,21 @@ routes = [
   { pattern = "noticiasintegra.pages.dev", zone_name = "noticiasintegra.pages.dev" },
   # Dominios custom
   { pattern = "centronews.buzz/*", zone_name = "centronews.buzz" },
+  { pattern = "*.centronews.buzz/*", zone_name = "centronews.buzz" },
   { pattern = "noticias123.click/*", zone_name = "noticias123.click" },
+  { pattern = "*.noticias123.click/*", zone_name = "noticias123.click" },
   { pattern = "breakingcenter.site/*", zone_name = "breakingcenter.site" },
+  { pattern = "*.breakingcenter.site/*", zone_name = "breakingcenter.site" },
   { pattern = "alavistanoticias.online/*", zone_name = "alavistanoticias.online" },
+  { pattern = "*.alavistanoticias.online/*", zone_name = "alavistanoticias.online" },
   { pattern = "socialmexico.top/*", zone_name = "socialmexico.top" },
+  { pattern = "*.socialmexico.top/*", zone_name = "socialmexico.top" },
   { pattern = "tmznews.lat/*", zone_name = "tmznews.lat" },
+  { pattern = "*.tmznews.lat/*", zone_name = "tmznews.lat" },
   { pattern = "radioabc.space/*", zone_name = "radioabc.space" },
+  { pattern = "*.radioabc.space/*", zone_name = "radioabc.space" },
   { pattern = "noticiasintegra.lat/*", zone_name = "noticiasintegra.lat" },
+  { pattern = "*.noticiasintegra.lat/*", zone_name = "noticiasintegra.lat" },
 ]
 
 [vars]

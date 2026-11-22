@@ -41,6 +41,53 @@ async function resolveArticleBySlug(db, slug, siteSlug) {
   return { article, isCMS };
 }
 
+
+function notFoundResponse(url, siteName, requestedSlug) {
+  const name = (siteName || 'Noticias').toString();
+  const esc = (t) => String(t || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  const home = url.origin + '/';
+  const canonical = url.origin + '/articulo/?slug=' + encodeURIComponent(requestedSlug || '');
+  const html = `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(name)}</title>
+<meta name="robots" content="noindex, follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="${esc(name)}">
+<meta property="og:title" content="${esc(name)}">
+<meta property="og:description" content="La nota que buscas ya no esta disponible. Te invitamos a leer las mas recientes.">
+<meta property="og:url" content="${canonical}">
+<meta property="og:image" content="${home}logo-header.png">
+<meta property="og:image:secure_url" content="${home}logo-header.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(name)}">
+<meta name="twitter:description" content="La nota que buscas ya no esta disponible. Te invitamos a leer las mas recientes.">
+<meta name="twitter:image" content="${home}logo-header.png">
+<meta http-equiv="refresh" content="6;url=${home}">
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#0f1115;color:#e8eaed;text-align:center;padding:24px}a{color:#4da3ff}</style>
+</head>
+<body>
+<main>
+<h1 style="font-size:1.35rem;margin:0 0 12px">Esta nota ya no esta disponible</h1>
+<p style="opacity:.8;margin:0 0 20px">Puede que haya sido retirada o que el enlace este incompleto.</p>
+<p><a href="${home}">Ir a la portada de ${esc(name)}</a></p>
+</main>
+</body>
+</html>`;
+  return new Response(html, {
+    status: 200,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'public, max-age=120',
+      'x-og-fallback': 'not-found'
+    }
+  });
+}
+
 export async function handleArticleRequest(context, siteSlug) {
   const { request, env, next } = context;
   const url = new URL(request.url);
@@ -66,7 +113,7 @@ export async function handleArticleRequest(context, siteSlug) {
 
     const { article } = await resolveArticleBySlug(env.DB, requestedSlug, siteSlug);
     if (!article) {
-      return await next();
+      return notFoundResponse(url, siteName, requestedSlug);
     }
 
     if (article.canonical_slug && article.canonical_slug !== requestedSlug) {
@@ -165,11 +212,14 @@ export async function handleArticleRequest(context, siteSlug) {
      return new HTMLRewriter()
        .on('title', { element(el) { el.setInnerContent(title); } })
        .on('meta#page-desc', { element(el) { el.setAttribute('content', description); } })
-       .on('meta#og-title', { element(el) { el.setAttribute('content', title); } })
-       .on('meta#og-desc', { element(el) { el.setAttribute('content', description); } })
-       .on('meta#og-image', { element(el) { el.setAttribute('content', image); } })
-       .on('meta#og-url', { element(el) { el.setAttribute('content', canonicalUrl); } })
-       .on('meta[property="og:type"]', { element(el) { el.setAttribute('content', 'article'); } })
+      // El shell estatico trae sus propias etiquetas og:*; se eliminan para no
+      // servir dos og:url (Facebook aborta el scrape: 100/1611070 y el post
+      // queda como enlace sin imagen). El bloque de abajo es el unico valido.
+       .on('meta#og-title', { element(el) { el.remove(); } })
+       .on('meta#og-desc', { element(el) { el.remove(); } })
+       .on('meta#og-image', { element(el) { el.remove(); } })
+       .on('meta#og-url', { element(el) { el.remove(); } })
+       .on('meta[property="og:type"]', { element(el) { el.remove(); } })
        .on('head', {
          element(el) {
            el.prepend(`

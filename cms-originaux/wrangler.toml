@@ -18,15 +18,25 @@ routes = [
   { pattern = "verticenoticias.pages.dev", zone_name = "verticenoticias.pages.dev" },
   # Dominios custom
   { pattern = "radiocinconoticias.click/*", zone_name = "radiocinconoticias.click" },
+  { pattern = "*.radiocinconoticias.click/*", zone_name = "radiocinconoticias.click" },
   { pattern = "centralmexico.online/*", zone_name = "centralmexico.online" },
+  { pattern = "*.centralmexico.online/*", zone_name = "centralmexico.online" },
   { pattern = "tvmexiconews.site/*", zone_name = "tvmexiconews.site" },
+  { pattern = "*.tvmexiconews.site/*", zone_name = "tvmexiconews.site" },
   { pattern = "cbnnoticias.click/*", zone_name = "cbnnoticias.click" },
+  { pattern = "*.cbnnoticias.click/*", zone_name = "cbnnoticias.click" },
   { pattern = "mexicoinformado.lat/*", zone_name = "mexicoinformado.lat" },
+  { pattern = "*.mexicoinformado.lat/*", zone_name = "mexicoinformado.lat" },
   { pattern = "nodoinformativo.lat/*", zone_name = "nodoinformativo.lat" },
+  { pattern = "*.nodoinformativo.lat/*", zone_name = "nodoinformativo.lat" },
   { pattern = "bitacoraurbana.lat/*", zone_name = "bitacoraurbana.lat" },
+  { pattern = "*.bitacoraurbana.lat/*", zone_name = "bitacoraurbana.lat" },
   { pattern = "reportecentral.site/*", zone_name = "reportecentral.site" },
+  { pattern = "*.reportecentral.site/*", zone_name = "reportecentral.site" },
   { pattern = "verticenoticias.today/*", zone_name = "verticenoticias.today" },
+  { pattern = "*.verticenoticias.today/*", zone_name = "verticenoticias.today" },
   { pattern = "noticiasobjetivo.click/*", zone_name = "noticiasobjetivo.click" },
+  { pattern = "*.noticiasobjetivo.click/*", zone_name = "noticiasobjetivo.click" },
 ]
 
 [vars]
