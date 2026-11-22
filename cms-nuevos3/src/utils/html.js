@@ -290,6 +290,7 @@ export const injectMetaTags = async (request, env, response) => {
             const schemaJson = JSON.stringify(schema);
 
             el.prepend(
+              `<meta property="fb:app_id" content="2355151528632792" />` +
               `<meta property="og:title" content="${safeTitle}" />` +
               `<meta property="og:description" content="${safeDesc}" />` +
               `<meta property="og:image" content="${safeImg}" />` +
