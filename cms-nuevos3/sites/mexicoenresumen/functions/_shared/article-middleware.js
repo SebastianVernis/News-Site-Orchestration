@@ -38,8 +38,8 @@ async function resolveArticleBySlug(db, slug) {
 }
 
 
-function notFoundResponse(url, siteName, requestedSlug) {
-  const name = (siteName || 'Noticias').toString();
+function notFoundResponse(url, siteSlug, requestedSlug) {
+  const name = (siteSlug || 'Noticias').toString();
   const esc = (t) => String(t || '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
@@ -111,7 +111,7 @@ export async function handleArticleRequest(context, siteSlug) {
       getSiteName(env.DB, siteSlug)
     ]);
     if (!article) {
-      return notFoundResponse(url, siteName, requestedSlug);
+      return notFoundResponse(url, siteSlug, requestedSlug);
     }
 
     if (article.canonical_slug && article.canonical_slug !== requestedSlug) {
